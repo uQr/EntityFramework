@@ -137,8 +137,12 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
 
                 if (nonColumnExpression != null)
                 {
-                    return binaryExpression.Right as AliasExpression
-                           ?? binaryExpression.Left as AliasExpression;
+                    var columnExpression = binaryExpression.Right as ColumnExpression
+                        ?? binaryExpression.Left as ColumnExpression;
+
+                    return (columnExpression != null ? new AliasExpression(columnExpression) : null)
+                        ?? binaryExpression.Right as AliasExpression
+                        ?? binaryExpression.Left as AliasExpression;
                 }
             }
 

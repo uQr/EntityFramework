@@ -433,7 +433,8 @@ namespace Microsoft.EntityFrameworkCore.Query.Internal
                 var assignment = node.Bindings[i] as MemberAssignment;
                 if (assignment != null)
                 {
-                    _stringBuilder.Append(assignment.Member.Name + " = " + Visit(assignment.Expression));
+                    _stringBuilder.Append(assignment.Member.Name + " = ");
+                    Visit(assignment.Expression);
                     appendAction(_stringBuilder, i == node.Bindings.Count - 1 ? " " : ", ");
                 }
                 else

@@ -780,6 +780,25 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
         }
 
         [ConditionalFact]
+        public virtual void Navigation_in_subquery_referencing_outer_query_with_client_side_result_operator_and_count()
+        {
+            using (var context = CreateContext())
+            {
+                var query = from o in context.Orders
+                            where o.OrderID == 10643 || o.OrderID == 10692
+                                // ReSharper disable once UseMethodAny.0
+                            where (from od in context.OrderDetails
+                                   where o.Customer.Country == od.Order.Customer.Country
+                                   select od).Distinct().Count() > 0
+                            select o;
+
+                var result = query.ToList();
+
+                Assert.Equal(2, result.Count);
+            }
+        }
+
+        [ConditionalFact]
         public virtual void GroupBy_on_nav_prop()
         {
             AssertQuery<Order, IGrouping<string, Order>>(

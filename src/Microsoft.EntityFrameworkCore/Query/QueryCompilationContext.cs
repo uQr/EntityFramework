@@ -9,6 +9,7 @@ using System.Reflection;
 using JetBrains.Annotations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
+using Microsoft.EntityFrameworkCore.Query.Expressions.Internal;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
@@ -19,6 +20,7 @@ using Microsoft.Extensions.Logging;
 using Remotion.Linq;
 using Remotion.Linq.Clauses;
 using Remotion.Linq.Clauses.Expressions;
+using Remotion.Linq.Clauses.ResultOperators;
 
 namespace Microsoft.EntityFrameworkCore.Query
 {
@@ -340,33 +342,209 @@ namespace Microsoft.EntityFrameworkCore.Query
             Check.NotNull(queryModelVisitor, nameof(queryModelVisitor));
             Check.NotNull(queryModel, nameof(queryModel));
 
-            _querySourcesRequiringMaterialization
+            var requiresMaterializationExpressionVisitor
                 = _requiresMaterializationExpressionVisitorFactory
-                    .Create(queryModelVisitor)
+                    .Create(queryModelVisitor);
+
+            _querySourcesRequiringMaterialization = requiresMaterializationExpressionVisitor
                     .FindQuerySourcesRequiringMaterialization(queryModel);
 
-            var groupJoinClauses = queryModel.BodyClauses.OfType<GroupJoinClause>().ToList();
-            if (groupJoinClauses.Any())
+            var groupJoinMaterializationExpressionVisitor = new RequiresMaterializationForGroupJoinExpressionVisitor();
+            var groupJoinMaterializationQueryModelVistor = new RequiresMaterializationForGroupJoinQueryModelVisitor(
+                groupJoinMaterializationExpressionVisitor, 
+                _querySourcesRequiringMaterialization, 
+                requiresMaterializationExpressionVisitor);
+
+            groupJoinMaterializationExpressionVisitor.QueryModelVisitor = groupJoinMaterializationQueryModelVistor;
+            groupJoinMaterializationQueryModelVistor.VisitQueryModel(queryModel);
+        }
+
+        private class RequiresMaterializationForGroupJoinQueryModelVisitor : ExpressionTransformingQueryModelVisitor<RequiresMaterializationForGroupJoinExpressionVisitor>
+        {
+            private readonly ISet<IQuerySource> _querySourcesRequiringMaterialization;
+            private readonly RequiresMaterializationExpressionVisitor _requiresMaterializationExpressionVisitor;
+
+            public RequiresMaterializationForGroupJoinQueryModelVisitor(
+                RequiresMaterializationForGroupJoinExpressionVisitor transformingVisitor,
+                ISet<IQuerySource> querySourcesRequiringMaterialization,
+                RequiresMaterializationExpressionVisitor requiresMaterializationExpressionVisitor)
+                : base(transformingVisitor)
             {
-                _querySourcesRequiringMaterialization.Add(queryModel.MainFromClause);
-                foreach (var groupJoinClause in groupJoinClauses)
+                transformingVisitor.QueryModelVisitor = this;
+                _querySourcesRequiringMaterialization = querySourcesRequiringMaterialization;
+                _requiresMaterializationExpressionVisitor = requiresMaterializationExpressionVisitor;
+            }
+
+            public override void VisitGroupJoinClause(GroupJoinClause groupJoinClause, QueryModel queryModel, int index)
+            {
+                // TODO: we should also look into not materializing this
+                _querySourcesRequiringMaterialization.Add(groupJoinClause.JoinClause);
+
+                var subQueryInnerSequence = groupJoinClause.JoinClause.InnerSequence as SubQueryExpression;
+                if (subQueryInnerSequence != null)
                 {
-                    _querySourcesRequiringMaterialization.Add(groupJoinClause.JoinClause);
+                    var subQuerySourcesRequiringMaterialization
+                        = _requiresMaterializationExpressionVisitor
+                            .FindQuerySourcesRequiringMaterialization(subQueryInnerSequence.QueryModel);
 
-                    var subQueryInnerSequence = groupJoinClause.JoinClause.InnerSequence as SubQueryExpression;
-                    if (subQueryInnerSequence != null)
+                    foreach (var subQuerySource in subQuerySourcesRequiringMaterialization)
                     {
-                        var subQuerySourcesRequiringMaterialization
-                            = _requiresMaterializationExpressionVisitorFactory
-                                .Create(queryModelVisitor)
-                                .FindQuerySourcesRequiringMaterialization(subQueryInnerSequence.QueryModel);
+                        _querySourcesRequiringMaterialization.Add(subQuerySource);
+                    }
+                }
 
-                        foreach (var subQuerySource in subQuerySourcesRequiringMaterialization)
+                var querySourceTracingExpressionVisitor = new QuerySourceTracingExpressionVisitor();
+
+
+
+
+                // test
+                //if (queryModel.ResultOperators.Any(r => !IsSafeResultOperator(r)))
+                //{
+                //    _querySourcesRequiringMaterialization.Add(queryModel.MainFromClause);
+
+                //    return;
+                //}
+
+
+
+                var resultQuerySource
+                    = querySourceTracingExpressionVisitor
+                        .FindResultQuerySourceReferenceExpression(
+                            queryModel.SelectClause.Selector,
+                            queryModel.MainFromClause);
+
+                //// if MainFrom clause is reachable from selector we need to materialize it
+                //// however if the queryModel also has result operator returning the scalar - MainFromClause doesn't need to be materialized
+                //if ((queryModel.ResultOperators.Any() && queryModel.ResultOperators.All(IsSafeResultOperator)) 
+                //    || (resultQuerySource != null && !queryModel.ResultOperators.Any(r => r is ValueFromSequenceResultOperatorBase)))
+                //{
+                //    _querySourcesRequiringMaterialization.Add(queryModel.MainFromClause);
+
+                //    return;
+                //}
+
+
+                // if MainFrom clause is reachable from selector we need to materialize it
+                // however if the queryModel also has result operator returning the scalar - MainFromClause doesn't need to be materialized
+                if (resultQuerySource != null && !queryModel.ResultOperators.Any(r => r is ValueFromSequenceResultOperatorBase))
+                {
+                    _querySourcesRequiringMaterialization.Add(queryModel.MainFromClause);
+
+                    return;
+                }
+
+
+
+                //// naive
+                //if (resultQuerySource != null)
+                //{
+                //    _querySourcesRequiringMaterialization.Add(queryModel.MainFromClause);
+
+                //    return;
+                //}
+
+
+
+
+
+                // check if there is SelectMany-DefaultIfEmpty clause directly after GroupJoinClase, and that it references the correct GroupJoin
+                // then check that reference to that GroupJoin doesn't appear anywhere else after
+                // if those conditions are met - we don't need client-side GroupJoin, and therefore we don't need to fully materialize MainFromClause
+                if (queryModel.BodyClauses.Count > index + 1)
+                {
+                    var additionalFromClause = queryModel.BodyClauses[index + 1] as AdditionalFromClause;
+
+                    var subQuery = additionalFromClause?.FromExpression as SubQueryExpression;
+                    if (subQuery?.QueryModel?.BodyClauses?.Count() == 0
+                        && subQuery.QueryModel.ResultOperators.Count == 1
+                        && subQuery.QueryModel.ResultOperators.Single() is DefaultIfEmptyResultOperator)
+                    {
+                        var subqueryGroupJoinClause = (((subQuery.QueryModel.SelectClause.Selector as QuerySourceReferenceExpression)
+                            ?.ReferencedQuerySource as MainFromClause)
+                                ?.FromExpression as QuerySourceReferenceExpression)
+                                    ?.ReferencedQuerySource as GroupJoinClause;
+
+                        if (subqueryGroupJoinClause == groupJoinClause)
                         {
-                            _querySourcesRequiringMaterialization.Add(subQuerySource);
+                            var querySourceExtractingVisitor = new QuerySourceExtractingVisitor();
+                            querySourceExtractingVisitor.Visit(queryModel.SelectClause.Selector);
+                            foreach (var bodyClause in queryModel.BodyClauses.Skip(index + 2))
+                            {
+                                bodyClause.TransformExpressions(querySourceExtractingVisitor.Visit);
+                            }
+
+                            if (!querySourceExtractingVisitor.QuerySources.Contains(groupJoinClause))
+                            {
+                                return;
+                            }
                         }
                     }
                 }
+
+                _querySourcesRequiringMaterialization.Add(queryModel.MainFromClause);
+            }
+
+
+
+
+
+
+            //private bool IsSafeResultOperator(ResultOperatorBase resultOperator)
+            //{
+            //    return resultOperator is SkipResultOperator
+            //        || resultOperator is TakeResultOperator
+            //        || resultOperator is FirstResultOperator
+            //        || resultOperator is SingleResultOperator
+            //        || resultOperator is CountResultOperator
+            //        || resultOperator is AllResultOperator
+            //        || resultOperator is AnyResultOperator
+            //        || resultOperator is GroupResultOperator;
+            //}
+
+
+            private class QuerySourceExtractingVisitor : ExpressionVisitorBase
+            {
+                public ISet<IQuerySource> QuerySources { get; private set; } = new HashSet<IQuerySource>();
+
+                protected override Expression VisitQuerySourceReference(QuerySourceReferenceExpression expression)
+                {
+                    QuerySources.Add(expression.ReferencedQuerySource);
+
+                    return expression;
+                }
+
+                protected override Expression VisitSubQuery(SubQueryExpression expression)
+                {
+                    expression.QueryModel.TransformExpressions(Visit);
+
+                    return expression;
+                }
+
+                protected override Expression VisitExtension(Expression node)
+                {
+                    var nullConditional = node as NullConditionalExpression;
+                    if (nullConditional != null)
+                    {
+                        Visit(nullConditional.NullableCaller);
+                        Visit(nullConditional.AccessOperation);
+                    }
+
+                    // TODO: other extensions
+                    return base.VisitExtension(node);
+                }
+            }
+        }
+
+        private class RequiresMaterializationForGroupJoinExpressionVisitor : ExpressionVisitorBase
+        {
+            public QueryModelVisitorBase QueryModelVisitor { get; set; }
+
+            protected override Expression VisitSubQuery(SubQueryExpression expression)
+            {
+                QueryModelVisitor.VisitQueryModel(expression.QueryModel);
+
+                return expression;
             }
         }
 

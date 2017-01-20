@@ -339,6 +339,24 @@ namespace Microsoft.EntityFrameworkCore.Query.Sql
                 return Expression.Equal(newExpression, Expression.Constant(true, typeof(bool)));
             }
 
+            //var aliasExpression = newExpression as AliasExpression;
+            //if (!searchCondition
+            //    && aliasExpression != null
+            //    && aliasExpression.Type == typeof(bool)
+            //    && aliasExpression.Expression.NodeType == ExpressionType.Coalesce)
+            //{
+            //    var coalesceExpression = (BinaryExpression)aliasExpression.Expression;
+
+            //    return new AliasExpression(
+            //        aliasExpression.Alias,
+            //        coalesceExpression.Update(
+            //            coalesceExpression.Left,
+            //            coalesceExpression.Conversion,
+            //            new ExplicitCastExpression(
+            //                coalesceExpression.Right,
+            //                typeof(bool))));
+            //}
+
             return newExpression;
         }
 

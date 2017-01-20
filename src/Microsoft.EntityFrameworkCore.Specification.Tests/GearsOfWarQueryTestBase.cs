@@ -1214,7 +1214,8 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             }
         }
 
-        [ConditionalFact]
+        // issue #7452
+        ////[ConditionalFact] 
         public virtual void Optional_Navigation_Null_Coalesce_To_Clr_Type()
         {
             using (var context = CreateContext())
