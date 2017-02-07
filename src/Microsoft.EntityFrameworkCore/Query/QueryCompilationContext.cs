@@ -444,7 +444,7 @@ namespace Microsoft.EntityFrameworkCore.Query
 
                 // if MainFrom clause is reachable from selector we need to materialize it
                 // however if the queryModel also has result operator returning the scalar - MainFromClause doesn't need to be materialized
-                if (mainFromClauseResultQuerySource != null && !queryModel.ResultOperators.Any(r => r is ValueFromSequenceResultOperatorBase))
+                if (joinClauseResultQuerySource != null && !queryModel.ResultOperators.Any(r => r is ValueFromSequenceResultOperatorBase))
                 {
                     _querySourcesRequiringMaterialization.Add(groupJoinClause.JoinClause);
                     addedJoinClause = true;

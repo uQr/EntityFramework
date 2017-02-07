@@ -1003,6 +1003,15 @@ WHERE ((
                 Sql);
         }
 
+        public override void Navigation_in_subquery_referencing_outer_query_with_client_side_result_operator_and_count()
+        {
+            base.Navigation_in_subquery_referencing_outer_query_with_client_side_result_operator_and_count();
+
+            Assert.Equal(
+                @"",
+                Sql);
+        }
+
         public override void GroupBy_on_nav_prop()
         {
             base.GroupBy_on_nav_prop();
