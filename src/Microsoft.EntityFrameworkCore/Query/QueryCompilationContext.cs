@@ -399,7 +399,7 @@ namespace Microsoft.EntityFrameworkCore.Query
             public override void VisitGroupJoinClause(GroupJoinClause groupJoinClause, QueryModel queryModel, int index)
             {
                 // TODO: we should also look into not materializing this
-                _querySourcesRequiringMaterialization.Add(groupJoinClause.JoinClause);
+                //_querySourcesRequiringMaterialization.Add(groupJoinClause.JoinClause);
 
                 var subQueryInnerSequence = groupJoinClause.JoinClause.InnerSequence as SubQueryExpression;
                 if (subQueryInnerSequence != null)
