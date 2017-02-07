@@ -195,17 +195,17 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
             {
                 var querySourceTracingExpressionVisitor = new QuerySourceTracingExpressionVisitor();
 
-                if (expression.QueryModel.ResultOperators.LastOrDefault() is DefaultIfEmptyResultOperator)
-                {
-                    var underlyingQuerySource = (((querySourceReferenceExpression.ReferencedQuerySource as MainFromClause)
-                            ?.FromExpression as QuerySourceReferenceExpression)
-                        ?.ReferencedQuerySource as GroupJoinClause)?.JoinClause;
+                //if (expression.QueryModel.ResultOperators.LastOrDefault() is DefaultIfEmptyResultOperator)
+                //{
+                //    var underlyingQuerySource = (((querySourceReferenceExpression.ReferencedQuerySource as MainFromClause)
+                //            ?.FromExpression as QuerySourceReferenceExpression)
+                //        ?.ReferencedQuerySource as GroupJoinClause)?.JoinClause;
 
-                    if (underlyingQuerySource != null)
-                    {
-                        AddQuerySource(underlyingQuerySource);
-                    }
-                }
+                //    if (underlyingQuerySource != null)
+                //    {
+                //        AddQuerySource(underlyingQuerySource);
+                //    }
+                //}
 
                 var resultQuerySource
                     = querySourceTracingExpressionVisitor
