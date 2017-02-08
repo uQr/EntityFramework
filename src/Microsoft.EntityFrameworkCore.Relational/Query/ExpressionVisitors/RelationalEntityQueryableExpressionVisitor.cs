@@ -2,6 +2,7 @@
 // Licensed under the Apache License, Version 2.0. See License.txt in the project root for license information.
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -10,6 +11,7 @@ using Microsoft.EntityFrameworkCore.Internal;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.EntityFrameworkCore.Query.Expressions;
+using Microsoft.EntityFrameworkCore.Query.Expressions.Internal;
 using Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal;
 using Microsoft.EntityFrameworkCore.Query.Internal;
 using Microsoft.EntityFrameworkCore.Query.ResultOperators.Internal;
@@ -138,6 +140,23 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors
                     bindSubQueries: true);
 
             return base.VisitMethodCall(node);
+        }
+
+        protected override Expression VisitExtension(Expression node)
+        {
+            var nullConditionalExpression = node as NullConditionalExpression;
+            if (nullConditionalExpression != null)
+            {
+                Visit(nullConditionalExpression.AccessOperation);
+                Visit(nullConditionalExpression.Caller);
+                Visit(nullConditionalExpression.NullableCaller);
+
+                return node;
+            }
+
+            Debug.Assert(false, "Unexpected extension expression: " + node);
+
+            return base.VisitExtension(node);
         }
 
         /// <summary>

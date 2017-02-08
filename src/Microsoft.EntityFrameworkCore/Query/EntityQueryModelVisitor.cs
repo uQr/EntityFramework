@@ -836,6 +836,11 @@ namespace Microsoft.EntityFrameworkCore.Query
             var outerKeySelectorExpression
                 = ReplaceClauseReferences(joinClause.OuterKeySelector, joinClause);
 
+            if (outerKeySelectorExpression.Type != joinClause.OuterKeySelector.Type)
+            {
+                outerKeySelectorExpression = Expression.Convert(outerKeySelectorExpression, joinClause.OuterKeySelector.Type);
+            }
+
             var innerSequenceExpression
                 = CompileJoinClauseInnerSequenceExpression(joinClause, queryModel);
 
