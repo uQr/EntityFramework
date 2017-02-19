@@ -2667,6 +2667,23 @@ LEFT JOIN [Level2] AS [l2] ON [l1_inner].[Id] = [l2].[Level1_Optional_Id]",
                 Sql);
         }
 
+        public override void Foo()
+        {
+            base.Foo();
+
+            Assert.Equal(
+                @"@__p_0: 2
+
+SELECT [t].[Name]
+FROM (
+    SELECT TOP(@__p_0) [l2_inner].*
+    FROM [Level2] AS [l2_inner]
+    INNER JOIN [Level1] AS [l1_inner] ON [l2_inner].[Level1_Required_Id] = [l1_inner].[Id]
+) AS [t]
+INNER JOIN [Level1] AS [l1_outer] ON [t].[Level1_Required_Id] = [l1_outer].[Id]",
+                Sql);
+        }
+
         private const string FileLineEnding = @"
 ";
 

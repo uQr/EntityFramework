@@ -1098,6 +1098,28 @@ namespace Microsoft.EntityFrameworkCore.Query
                         t == typeof(GroupResultOperator)
                         || t == typeof(AllResultOperator)))
             {
+                //var memberExpressionSelector = selector as MemberExpression;
+
+                //Type foo = null;
+                //if (CurrentParameter.Type.GetTypeInfo().IsGenericType)
+                //{
+                //    foo = CurrentParameter.Type.GetGenericTypeDefinition();
+                //}
+
+                //var methodCallExpression = _expression as MethodCallExpression;
+                //if (memberExpressionSelector != null && foo.Equals(typeof(TransparentIdentifier<,>)) && memberExpressionSelector.Member.Name == "Outer" && methodCallExpression != null)
+                //{
+                //    if (methodCallExpression.Method.Name == "_ShapedQuery")
+                //    {
+                //        var arguments = methodCallExpression.Arguments;
+
+
+                //        var shaperArgument = (arguments[2] as ConstantExpression).Value as QueryFlattener;
+                //        Expression.Call(methodCallExpression.Method, arguments[0], arguments[1],  )
+
+                //    }
+                //}
+
                 _expression
                     = Expression.Call(
                         LinqOperatorProvider.Select

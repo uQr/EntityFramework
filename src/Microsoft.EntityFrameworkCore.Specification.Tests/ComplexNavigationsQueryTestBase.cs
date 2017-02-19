@@ -3780,6 +3780,25 @@ namespace Microsoft.EntityFrameworkCore.Specification.Tests
             }
         }
 
+        [ConditionalFact]
+        public virtual void Foo()
+        {
+            using (var ctx = CreateContext())
+            {
+                var query = from l2_outer in
+                        (from l2_inner in ctx.LevelTwo
+                         join l1_inner in ctx.LevelOne on l2_inner.Level1_Required_Id equals l1_inner.Id
+                         select l2_inner).Take(2)
+                    join l1_outer in ctx.LevelOne on l2_outer.Level1_Required_Id equals l1_outer.Id
+                    select l2_outer.Name;
+
+
+                //var query = from l1 in ctx.LevelOne
+                //            select new { l1.Id, l1.Name };
+
+                var result = query.ToList();
+            }
+        }
 
         private static TResult Maybe<TResult>(object caller, Func<TResult> expression) where TResult : class
         {

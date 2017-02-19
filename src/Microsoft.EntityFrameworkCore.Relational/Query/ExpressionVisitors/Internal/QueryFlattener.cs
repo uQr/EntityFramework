@@ -165,7 +165,7 @@ namespace Microsoft.EntityFrameworkCore.Query.ExpressionVisitors.Internal
             => new CompositeShaper<TOuter, TInner, TResult>(
                 querySource, outerShaper, innerShaper, materializer);
 
-        private class CompositeShaper<TOuter, TInner, TResult> : Shaper, IShaper<TResult>
+        public class CompositeShaper<TOuter, TInner, TResult> : Shaper, IShaper<TResult>
         {
             private readonly IShaper<TOuter> _outerShaper;
             private readonly IShaper<TInner> _innerShaper;

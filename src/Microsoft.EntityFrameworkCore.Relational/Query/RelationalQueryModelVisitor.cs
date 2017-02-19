@@ -1301,6 +1301,37 @@ namespace Microsoft.EntityFrameworkCore.Query
             }
         }
 
+        public override void VisitSelectClause([NotNull] SelectClause selectClause, [NotNull] QueryModel queryModel)
+        {
+            base.VisitSelectClause(selectClause, queryModel);
+
+            var methodCallExpression = (Expression as MethodCallExpression);
+            if (methodCallExpression != null && methodCallExpression.Method.MethodIsClosedFormOf(LinqOperatorProvider.Select))
+            {
+                var caller = methodCallExpression.Arguments[0] as MethodCallExpression;
+                var selectorLambda = methodCallExpression.Arguments[1] as LambdaExpression;
+                if (caller.Method.MethodIsClosedFormOf(QueryCompilationContext.QueryMethodProvider.ShapedQueryMethod)
+                    && selectorLambda.Parameters[0].Type.Name.Contains("TransparentIdentifier"))
+                {
+                    if ((selectorLambda.Body as MemberExpression)?.Member?.Name == "Outer")
+                    {
+                        var compositeShaper = (caller.Arguments[2] as ConstantExpression).Value;
+                        var outerProperty = compositeShaper.GetType().GetTypeInfo().GetDeclaredField("_outerShaper");
+                        var outerShaper = outerProperty.GetValue(compositeShaper);
+
+                        var foo = Expression.Call(
+                            QueryCompilationContext.QueryMethodProvider.ShapedQueryMethod.MakeGenericMethod(typeof(ValueBuffer)),
+                            caller.Arguments[0],
+                            caller.Arguments[1],
+                            Expression.Constant(outerShaper));
+
+                        Expression = foo;
+                    }
+                }
+            }
+
+        }
+
         /// <summary>
         ///     Visit a result operator.
         /// </summary>
