@@ -1310,7 +1310,8 @@ namespace Microsoft.EntityFrameworkCore.Query
             {
                 var caller = methodCallExpression.Arguments[0] as MethodCallExpression;
                 var selectorLambda = methodCallExpression.Arguments[1] as LambdaExpression;
-                if (caller.Method.MethodIsClosedFormOf(QueryCompilationContext.QueryMethodProvider.ShapedQueryMethod)
+                if (caller != null 
+                    && caller.Method.MethodIsClosedFormOf(QueryCompilationContext.QueryMethodProvider.ShapedQueryMethod)
                     && selectorLambda.Parameters[0].Type.Name.Contains("TransparentIdentifier"))
                 {
                     if ((selectorLambda.Body as MemberExpression)?.Member?.Name == "Outer")
@@ -1319,13 +1320,14 @@ namespace Microsoft.EntityFrameworkCore.Query
                         var outerProperty = compositeShaper.GetType().GetTypeInfo().GetDeclaredField("_outerShaper");
                         var outerShaper = outerProperty.GetValue(compositeShaper);
 
-                        var foo = Expression.Call(
-                            QueryCompilationContext.QueryMethodProvider.ShapedQueryMethod.MakeGenericMethod(typeof(ValueBuffer)),
-                            caller.Arguments[0],
-                            caller.Arguments[1],
-                            Expression.Constant(outerShaper));
-
-                        Expression = foo;
+                        if (outerShaper is IShaper<ValueBuffer>)
+                        {
+                            Expression = Expression.Call(
+                                QueryCompilationContext.QueryMethodProvider.ShapedQueryMethod.MakeGenericMethod(typeof(ValueBuffer)),
+                                caller.Arguments[0],
+                                caller.Arguments[1],
+                                Expression.Constant(outerShaper));
+                        }
                     }
                 }
             }
