@@ -54,7 +54,7 @@ namespace Microsoft.EntityFrameworkCore.Relational.Tests.TestUtilities.FakeProvi
         {
             CloseCount++;
         }
-#elif NETCOREAPP1_1
+#elif NETCOREAPP2_0
 #else
 #error target frameworks need to be updated.
 #endif
@@ -66,7 +66,7 @@ namespace Microsoft.EntityFrameworkCore.Relational.Tests.TestUtilities.FakeProvi
             {
                 DisposeCount++;
 
-#if NETCOREAPP1_1
+#if NETCOREAPP2_0
                 CloseCount++;
 #elif NET46
 #else
@@ -175,7 +175,7 @@ namespace Microsoft.EntityFrameworkCore.Relational.Tests.TestUtilities.FakeProvi
         {
             throw new NotImplementedException();
         }
-#elif NETCOREAPP1_1
+#elif NETCOREAPP2_0
 #else
 #error target frameworks need to be updated.
 #endif

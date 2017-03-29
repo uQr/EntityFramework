@@ -885,7 +885,7 @@ namespace Microsoft.EntityFrameworkCore.SqlServer.Tests
             public override string SourceColumn { get; set; }
 #if NET46
             public override DataRowVersion SourceVersion { get; set; }
-#elif NETCOREAPP1_1
+#elif NETCOREAPP2_0
 #else
 #error target frameworks need to be updated.
 #endif
